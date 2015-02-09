@@ -10,6 +10,9 @@
 // TODO(zach): Make this error proof.
 #define IOS_PATH_MAX PATH_MAX
 
+#define MAX(x, y) (x) > (y) ? (x) : (y)
+#define MIN(x, y) (x) < (y) ? (x) : (y)
+
 typedef struct {
 	int samplesHz;
 	size_t bytesPerChannelPerPacket;
@@ -23,7 +26,6 @@ typedef struct {
 	int height;
 	int pitch;
 	int bytesPerPixel;
-// IMPORTANT(zach): Everything above here must be the same layout as game_offscreen_buffer
 	float pointToPixelScale;
 } ios_offscreen_buffer;
 

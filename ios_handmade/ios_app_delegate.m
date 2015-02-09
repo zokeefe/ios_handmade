@@ -135,7 +135,7 @@ internal OSStatus renderSineWave(
 
 	for (uint32_t sample = 0; sample < inNumberFrames; ++sample) {
 		// Just to show writing to the left and right channel
-        buffer[sample] = (uint16_t)(sinf(theta) * amplitude) |
+		buffer[sample] = (uint16_t)(sinf(theta) * amplitude) |
 			((uint32_t)(sinf(theta) * amplitude) << 16);
 		theta += thetaInc;
 		theta -= (theta < 2.0 * M_PI) ? 0 : 2.0 * M_PI;
@@ -272,8 +272,6 @@ NSError *loadWritableBundleData(NSString *sourcePath, NSString *destPath) {
 			8,
 			activeBuffer.pitch,
 			colorSpace,
-			// NOTE(zach): non-premultiplied alpha not supported on iOS
-			// Quartz 2D Programming Guide Table 2-1
 			(CGBitmapInfo)(kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little) );
 	
 	CGColorSpaceRelease(colorSpace);
@@ -289,9 +287,26 @@ NSError *loadWritableBundleData(NSString *sourcePath, NSString *destPath) {
 				globalLastTouch.y * activeBuffer.pointToPixelScale );
 #else
 		thread_context thread = {0};
-		GameUpdateAndRender(&thread, &globalGameMemory, &globalGameInput, (game_offscreen_buffer *)&activeBuffer);
+
+		game_offscreen_buffer gameBuffer;
+		gameBuffer.Memory = activeBuffer.memory;
+#define HANDMADE_PIXEL_WIDTH 960
+#define HANDMADE_PIXEL_HEIGHT 540 
+		// NOTE(zach): Casey's software renderer does not scale right now. It expects
+		// a 960x540 pixel buffer to render into
+		gameBuffer.Width = MIN(HANDMADE_PIXEL_WIDTH, activeBuffer.width);
+		gameBuffer.Height = MIN(HANDMADE_PIXEL_HEIGHT, activeBuffer.height);;
+		gameBuffer.Pitch = activeBuffer.pitch;
+		gameBuffer.BytesPerPixel = activeBuffer.bytesPerPixel;
+
+		GameUpdateAndRender(&thread, &globalGameMemory, &globalGameInput, &gameBuffer);
 #endif
 		renderTouch(context, activeBuffer, globalLastTouch);
+
+		// NOTE(zach): For now, blit the bitmap returned by game code directly to screen.
+		// I.e. don't scale the image to fit screen. Not that it would be hard to do so,
+		// but because 1->1 byte to pixel mapping is usefull during development, and I'm
+		// not sure if Casey will be doing scaling in his software render.
 		CGImageRef image = CGBitmapContextCreateImage(context);
 		CGContextRelease(context);
 
@@ -332,7 +347,7 @@ NSError *loadWritableBundleData(NSString *sourcePath, NSString *destPath) {
 
     self.window.rootViewController = [[UIViewController alloc] init];
     
-    // IMPORTANT(zach): Make sure there exists a launch screen for the suitable device. If you don't 
+	// IMPORTANT(zach): Make sure there exists a launch screen for the suitable device. If you don't
 	// have a launch screen for a particular screen size, Apple interprets this as your app not
 	// supporting that screen size, and will launch in letterbox mode.
 
