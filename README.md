@@ -5,21 +5,18 @@ Ongoing iOS port of Casey Muratori's awesome [Handmade Hero](https://handmadeher
 1. To learn about the iOS platform
 2. To be able to drop-in Casey's platform-independent game source code and have it run unchanged
 
-### Current status - Day 40 (Building, but no input mapped yet)
+### Current status - Day 40 (Working!)
 
-![screenshot](/screenshots/day40_2.png)
+![screenshot](/screenshots/day40_3.png)
 
-Currently using:
+- [x] CoreAudio sound
+- [x] Quartz graphics. Currently blitting game buffer directly to screen without scaling.
+- [x] UIKit touch input
+- [ ] OpenGLES graphics
+- [ ] Live-loop replays
+- [ ] Live-loop editing. iOS 8 *does* support dynamic libraries, but don't know how to load the recompiled game library into the device mid-exection
 
-* CoreAudio for sound
-* Quartz for graphics
-* UIKit touches for input (not yet working, still need to map input)
-
-TODO:
-
-* Switch to OpenGLES
-* Support live-loop replays
-* Find out if live code update is possible on iOS. iOS 8 *does* support dynamic libraries, but don't know how to load the recompiled game library into the device mid-exection
+Code is still just debug-quality.
 
 ### Prerequisites
 * Preorder of Handmade Hero! This is possibly the coolest game project ever, and is the only way to get access to the source code which you'll need to build this game. Handmade Hero can be preordered from the project's main site here ([https://handmadehero.org/](https://handmadehero.org/))

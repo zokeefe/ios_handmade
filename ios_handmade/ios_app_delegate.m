@@ -1,5 +1,7 @@
 
+#import <mach/mach.h>
 #import <mach/mach_init.h>
+#import <mach/mach_time.h>
 #import <mach/vm_map.h>
 #import <AudioUnit/AudioUnit.h>
 #import <stdint.h>
@@ -18,10 +20,10 @@
 global_variable ios_offscreen_buffer globalBackBuffers[2];
 global_variable ios_sound_output globalSoundOutput;
 global_variable ios_state globalState;
+global_variable ios_input globalInput;
+global_variable ios_input_touch globalLastTouch;
 global_variable game_memory globalGameMemory;
-global_variable game_input globalGameInput;
 global_variable CADisplayLink *globalDisplayLink;
-global_variable CGPoint globalLastTouch;
 
 #if HANDMADE_INTERNAL
 // NOTE(zach): Not for shipping.
@@ -92,31 +94,28 @@ internal DEBUG_PLATFORM_WRITE_ENTIRE_FILE(debugPlatformWriteEntireFile) {
 
 #endif
 
-internal void renderWeirdRectangles(
-		CGContextRef context,
-		ios_offscreen_buffer buffer,
-		float xOff, float yOff ) {
-	CGContextSetRGBFillColor(context, 1, 0, 0, 0.5);
-	CGContextFillRect(context, CGRectMake(xOff, yOff, 200.0, 100.0));
-	CGContextSetRGBFillColor(context, 0, 0, 1, 0.5);
-	CGContextFillRect(context, CGRectMake(yOff, xOff, 100.0, 200.0));
-	CGContextSetRGBFillColor(context, 0, 1, 0, 0.5);
-	CGContextFillRect(context, CGRectMake(buffer.width - xOff, yOff, 150.0, 150.0));
-	CGContextSetRGBFillColor(context, 0, 1, 1, 0.5);
-	CGContextFillRect(context, CGRectMake(xOff, buffer.height - xOff, 125.0, 175.0));
+internal void renderTouch(CGContextRef context, ios_input_touch touch) {
+	switch (touch.phase) {
+	case UITouchPhaseBegan:
+	case UITouchPhaseMoved:
+	case UITouchPhaseStationary:
+		CGContextSetRGBFillColor(context, 1, 1, 0, 0.5);
+		Float32 radius = 20.0f;
+		CGRect rect = CGRectMake(
+				touch.x - radius,
+				touch.y - radius,
+				radius * 2,
+				radius * 2 );
+		CGContextFillEllipseInRect(context, rect);
+		break;
+	case UITouchPhaseEnded:
+	case UITouchPhaseCancelled:
+	default:
+		break;
+	}
 }
 
-internal void renderTouch(CGContextRef context, ios_offscreen_buffer buffer, CGPoint touchLoc) {
-	CGContextSetRGBFillColor(context, 1, 1, 0, 0.5);
-	float circleRadius = 20;
-	CGRect rect = CGRectMake(
-			buffer.pointToPixelScale * touchLoc.x - circleRadius,
-			buffer.height - buffer.pointToPixelScale * touchLoc.y - circleRadius,
-			circleRadius * 2,
-			circleRadius * 2 );
-	CGContextFillEllipseInRect(context, rect);
-}
-
+#if 0
 internal OSStatus renderSineWave(
 		void *inRefCon,
 		AudioUnitRenderActionFlags *ioActionFlags,
@@ -142,6 +141,7 @@ internal OSStatus renderSineWave(
 	}
 	return noErr;
 }
+#endif
 
 internal OSStatus getInputSoundSamples(
 		void *inRefCon,
@@ -160,7 +160,7 @@ internal OSStatus getInputSoundSamples(
 	return noErr;
 }
 
-internal OSStatus initAudioUnit(ios_sound_output* soundOutput) {
+internal OSStatus iosInitAudioUnit(ios_sound_output* soundOutput) {
 
 	OSErr err;
 
@@ -210,7 +210,7 @@ internal OSStatus initAudioUnit(ios_sound_output* soundOutput) {
 	return err;
 }
 
-NSError *loadWritableBundleData(NSString *sourcePath, NSString *destPath) {
+internal NSError *iosLoadWritableBundleData(NSString *sourcePath, NSString *destPath) {
 	NSFileManager *fs = [NSFileManager defaultManager];
 	NSError *error = NULL;
 	BOOL destIsDir;
@@ -245,14 +245,225 @@ NSError *loadWritableBundleData(NSString *sourcePath, NSString *destPath) {
 	return error;
 }
 
+internal void iosInitInput(ios_input *input, ios_offscreen_buffer *buffer) {
+
+#define ASSERT_BOUNDS(x, y, r) Assert((x) - (r) >= 0) \
+	Assert((x) + (r) < buffer->width) \
+	Assert((y) - (r) >= 0) \
+	Assert((y) + (r) < buffer->height)
+	
+	const Float32 actionButtonRadius = 45.0;
+	const Float32 actionButtonGroupCenterOffsetX = (Float32)buffer->width - 175.0;
+	const Float32 actionButtonGroupCenterOffsetY = 175.0;
+	const Float32 actionButtonGroupSpreadX = 90.0;
+	const Float32 actionButtonGroupSpreadY = 90.0;
+
+	input->actionUp.radius = input->actionDown.radius = input->actionLeft.radius =
+		input->actionRight.radius = actionButtonRadius;
+
+	input->actionUp.centerX = actionButtonGroupCenterOffsetX;
+	input->actionUp.centerY = actionButtonGroupCenterOffsetY + actionButtonGroupSpreadY;
+	ASSERT_BOUNDS(input->actionUp.centerX, input->actionUp.centerY, input->actionUp.radius)
+
+	input->actionDown.centerX = actionButtonGroupCenterOffsetX;
+	input->actionDown.centerY = actionButtonGroupCenterOffsetY - actionButtonGroupSpreadY;
+	ASSERT_BOUNDS(input->actionDown.centerX, input->actionDown.centerY, input->actionDown.radius)
+
+	input->actionLeft.centerX = actionButtonGroupCenterOffsetX - actionButtonGroupSpreadX;
+	input->actionLeft.centerY = actionButtonGroupCenterOffsetY;
+	ASSERT_BOUNDS(input->actionLeft.centerX, input->actionLeft.centerY, input->actionLeft.radius)
+
+	input->actionRight.centerX = actionButtonGroupCenterOffsetX + actionButtonGroupSpreadX;
+	input->actionRight.centerY = actionButtonGroupCenterOffsetY;
+	ASSERT_BOUNDS(input->actionRight.centerX, input->actionRight.centerY, input->actionRight.radius)
+
+	input->joystick.centerX = 175.0;
+	input->joystick.centerY = 175.0;
+	input->joystick.radius = 100.0;
+	ASSERT_BOUNDS(input->joystick.centerX, input->joystick.centerY, input->joystick.radius);
+}
+
+internal void iosRenderInputHud(CGContextRef context, ios_offscreen_buffer *buffer, ios_input *input) {
+	CGContextSetRGBFillColor(context, 0.0, 0.0, 1.0, 0.75);
+	CGContextSetRGBStrokeColor(context, 0.0, 0.0, 1.0, 0.75);
+	CGContextSetLineWidth(context, 3.0);
+	for (size_t i = 0; i < ArrayCount(input->buttons); ++i) {
+		ios_input_round_button button = input->buttons[i];
+		CGRect rect = CGRectMake(
+				button.centerX - button.radius,
+				button.centerY - button.radius,
+				button.radius * 2,
+				button.radius * 2 );
+		if (button.isDown)
+			CGContextFillEllipseInRect(context, rect);
+		else
+			CGContextStrokeEllipseInRect(context, rect);
+	}	
+	CGRect rect = CGRectMake(
+			input->joystick.centerX - input->joystick.radius,
+			input->joystick.centerY - input->joystick.radius,
+			input->joystick.radius * 2,
+			input->joystick.radius * 2 );
+	CGContextStrokeEllipseInRect(context, rect);
+
+	ios_input_joystick *joystick = &input->joystick;
+	if (joystick->stickX != 0 || joystick->stickX != 0) {
+#define stickRadius 80.0
+		Assert(stickRadius < joystick->radius)
+		Float32 radiusDiff = joystick->radius - stickRadius;
+		rect = CGRectMake(
+				joystick->centerX + joystick->stickX * radiusDiff - stickRadius,
+				joystick->centerY + joystick->stickY * radiusDiff - stickRadius,
+				stickRadius * 2,
+				stickRadius * 2 );
+		CGContextFillEllipseInRect(context, rect);
+	}
+
+}
+
+internal void iosProccessRoundButtonInput(ios_input_round_button *button, ios_input_touch *touches,
+		size_t numTouches) {
+	ios_input_touch touch;
+	bool buttonPress = false;
+	for (size_t i = 0;  !buttonPress && i < numTouches; ++i) {
+		touch = touches[i];
+		Float32 dX = (button->centerX - touch.x);
+		Float32 dY = (button->centerY - touch.y);
+		Float32 distance = sqrt(dX * dX + dY * dY);
+		if (distance - button->radius - touch.radius < 0) {
+			switch (touch.phase) {
+			case UITouchPhaseBegan:
+			case UITouchPhaseMoved:
+			case UITouchPhaseStationary:
+				buttonPress = true;
+				break;
+			case UITouchPhaseEnded:
+			case UITouchPhaseCancelled:
+			default:
+				break;
+			}
+		}
+	}
+	button->halfTransitionCount += button->isDown == buttonPress ? 0 : 1;
+	button->isDown = buttonPress;
+}
+
+internal inline void mapButtonInputToGameInput(ios_input_round_button *iosButton,
+		game_button_state *gameButton) {
+	gameButton->HalfTransitionCount = iosButton->halfTransitionCount;
+	gameButton->EndedDown = iosButton->isDown;
+}
+
+internal void mapInputToGame(ios_input *iosInput, game_input *gameInput) {
+	game_controller_input *controller = &gameInput->Controllers[0];			
+	controller->IsConnected = true;
+	
+	mapButtonInputToGameInput(&iosInput->actionUp, &controller->ActionUp);
+	mapButtonInputToGameInput(&iosInput->actionDown, &controller->ActionDown);
+	mapButtonInputToGameInput(&iosInput->actionLeft, &controller->ActionLeft);
+	mapButtonInputToGameInput(&iosInput->actionRight, &controller->ActionRight);
+	mapButtonInputToGameInput(&iosInput->leftShoulder, &controller->LeftShoulder);
+	mapButtonInputToGameInput(&iosInput->rightShoulder, &controller->RightShoulder);
+	mapButtonInputToGameInput(&iosInput->back, &controller->Back);
+	mapButtonInputToGameInput(&iosInput->start, &controller->Start);
+#if 0
+	// TODO(zach): Switch this to analog when the game supports it
+	controller->IsAnalog = true;
+	controller->StickAverageX = iosInput->joystick.stickX;
+	controller->StickAverageY = iosInput->joystick.stickY;
+#else
+	Float32 threshhold = 0.2;
+	controller->IsAnalog = (bool32)false;
+	if (iosInput->joystick.stickX >= threshhold) {
+		controller->MoveRight.EndedDown = (bool32)true;
+		controller->MoveRight.HalfTransitionCount = 1;
+	} else {
+		controller->MoveRight.EndedDown = (bool32)false;
+		controller->MoveRight.HalfTransitionCount = 0;
+	}
+
+	if (iosInput->joystick.stickX <= -threshhold) {
+		controller->MoveLeft.EndedDown = (bool32)true;
+		controller->MoveLeft.HalfTransitionCount = 1;
+	} else {
+		controller->MoveLeft.EndedDown = (bool32)false;
+		controller->MoveLeft.HalfTransitionCount = 0;
+	}
+
+	if (iosInput->joystick.stickY >= threshhold) {
+		controller->MoveUp.EndedDown = (bool32)true;
+		controller->MoveUp.HalfTransitionCount = 1;
+	} else {
+		controller->MoveUp.EndedDown = (bool32)false;
+		controller->MoveUp.HalfTransitionCount = 0;
+	}
+
+	if (iosInput->joystick.stickY <= -threshhold) {
+		controller->MoveDown.EndedDown = (bool32)true;
+		controller->MoveDown.HalfTransitionCount = 1;
+	} else {
+		controller->MoveDown.EndedDown = (bool32)false;
+		controller->MoveDown.HalfTransitionCount = 0;	
+	}
+#endif
+}
+
 @implementation App_delegate
 
 - (void)touchEvent:(UIEvent *)event {
-	for (UITouch *touch in [[event allTouches] allObjects]) {
-		// TODO(zach): Process input
-		globalLastTouch = [touch locationInView:nil];
-		NSLog(@"(%f, %f)\n", globalLastTouch.x, globalLastTouch.y);
+	NSArray *allTouches = [[event allTouches] allObjects];
+
+// TODO(zach): Find right answer for this
+#define MAX_TOUCHES 10
+
+	// TODO(zach): Need to figure out if the touches returned by this function
+	// are just the touches that changed, or if they include all active touches.
+	ios_input_touch touchInputs[MAX_TOUCHES];
+	size_t touchNum = 0;
+	for (UITouch *touch in allTouches) {
+			CGPoint loc = [touch locationInView:nil];
+			touchInputs[touchNum].x = loc.x * globalState.pointToPixelScale;
+			touchInputs[touchNum].y = globalBackBuffers[0].height - loc.y * globalState.pointToPixelScale;
+			touchInputs[touchNum].radius = (touch.majorRadius + touch.majorRadiusTolerance) *
+				globalState.pointToPixelScale;
+			touchInputs[touchNum].phase = touch.phase;
+			globalLastTouch = touchInputs[touchNum];
+			NSLog(@"(%f, %f)\n", touchInputs[touchNum].x, touchInputs[touchNum].y);
+			++touchNum;
 	}
+
+	for (size_t i = 0; i < ArrayCount(globalInput.buttons); ++i)
+		iosProccessRoundButtonInput(&globalInput.buttons[i], touchInputs, touchNum);
+
+	Float32 extraStickToleranceRadius = 200.0;
+	ios_input_joystick *joystick = &globalInput.joystick;
+	bool joystickActive = false;
+	for (size_t i = 0; i < touchNum; ++i) {
+		ios_input_touch touch = touchInputs[i];
+		Float32 dX = (touch.x - joystick->centerX);
+		Float32 dY = (touch.y - joystick->centerY);
+		Float32 distance = sqrt(dX * dX + dY * dY);
+		if (distance - joystick->radius - touch.radius - extraStickToleranceRadius < 0) {
+			Float32 scaleFactor = distance <= joystick->radius ?
+				joystick->radius : distance;
+			switch (touch.phase) {
+			case UITouchPhaseBegan:
+			case UITouchPhaseMoved:
+			case UITouchPhaseStationary:
+				joystick->stickX = dX / scaleFactor;
+				joystick->stickY = dY / scaleFactor;
+				joystickActive = true;
+				break;
+			case UITouchPhaseEnded:
+			case UITouchPhaseCancelled:
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	if (!joystickActive)
+		joystick->stickX = joystick->stickY = 0.0;
 }
 
 - (void)doFrame:(CADisplayLink *)sender {
@@ -279,13 +490,7 @@ NSError *loadWritableBundleData(NSString *sourcePath, NSString *destPath) {
 	if (context) {
 		CGContextSetRGBFillColor(context, 0, 0, 0, 1);
 		CGContextFillRect(context, CGRectMake(0, 0, activeBuffer.width, activeBuffer.height));
-#if 0
-		renderWeirdRectangles(
-				context,
-				activeBuffer,
-				globalLastTouch.x * activeBuffer.pointToPixelScale,
-				globalLastTouch.y * activeBuffer.pointToPixelScale );
-#else
+
 		thread_context thread = {0};
 
 		game_offscreen_buffer gameBuffer;
@@ -299,9 +504,24 @@ NSError *loadWritableBundleData(NSString *sourcePath, NSString *destPath) {
 		gameBuffer.Pitch = activeBuffer.pitch;
 		gameBuffer.BytesPerPixel = activeBuffer.bytesPerPixel;
 
-		GameUpdateAndRender(&thread, &globalGameMemory, &globalGameInput, &gameBuffer);
-#endif
-		renderTouch(context, activeBuffer, globalLastTouch);
+		game_input gameInput = {0};
+		mapInputToGame(&globalInput, &gameInput);
+
+		local_persist uint64_t last = 0;
+		local_persist real32 machToNano = 0.0;
+		uint64_t now = mach_absolute_time();
+		if (machToNano == 0.0 ) {
+			mach_timebase_info_data_t sTimebaseInfo;
+			mach_timebase_info(&sTimebaseInfo);
+			machToNano = (real32)sTimebaseInfo.numer / (real32)sTimebaseInfo.denom;
+		}
+#define NANOSECONDS_PER_S 1000000000 
+		gameInput.dtForFrame = (real32)(now - last) * machToNano / (real32)NANOSECONDS_PER_S;
+		last = now;
+
+		GameUpdateAndRender(&thread, &globalGameMemory, &gameInput, &gameBuffer);
+		iosRenderInputHud(context, &activeBuffer, &globalInput);
+		renderTouch(context, globalLastTouch);
 
 		// NOTE(zach): For now, blit the bitmap returned by game code directly to screen.
 		// I.e. don't scale the image to fit screen. Not that it would be hard to do so,
@@ -321,13 +541,12 @@ NSError *loadWritableBundleData(NSString *sourcePath, NSString *destPath) {
 	}
 }
 
-
 - (BOOL)application:(UIApplication *)application willFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
 
 	NSString *sourcePath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"data"];
 	NSString *destPath = [NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES) firstObject];
 	// TODO(zach): Probably don't need to do this everytime.
-	NSError *loadErr = loadWritableBundleData(sourcePath, destPath);
+	NSError *loadErr = iosLoadWritableBundleData(sourcePath, destPath);
 	if (loadErr) {
 		// TODO(zach): Logging.
 	}
@@ -351,6 +570,7 @@ NSError *loadWritableBundleData(NSString *sourcePath, NSString *destPath) {
 	// have a launch screen for a particular screen size, Apple interprets this as your app not
 	// supporting that screen size, and will launch in letterbox mode.
 
+	globalState.pointToPixelScale = [UIScreen mainScreen].scale;
 	CGSize screen = [[UIScreen mainScreen] nativeBounds].size;
 	int pixelWidth = (int)(screen.width + 0.5);
 	int pixelHeight = (int)(screen.height + 0.5);
@@ -365,7 +585,6 @@ NSError *loadWritableBundleData(NSString *sourcePath, NSString *destPath) {
 	globalBackBuffers[0].width = pixelWidth;
 	globalBackBuffers[0].bytesPerPixel = bytesPerPixel;
 	globalBackBuffers[0].pitch = pixelWidth * bytesPerPixel;
-	globalBackBuffers[0].pointToPixelScale = [UIScreen mainScreen].scale;
 	globalBackBuffers[1] = globalBackBuffers[0];
 
 	globalGameMemory.PermanentStorageSize = Megabytes(64);
@@ -408,6 +627,24 @@ NSError *loadWritableBundleData(NSString *sourcePath, NSString *destPath) {
 			globalGameMemory.TransientStorageSize +
 			bitmapSize);
 
+	globalSoundOutput.samplesHz = 44100;
+	globalSoundOutput.bytesPerChannelPerPacket = sizeof(uint16_t);
+	globalSoundOutput.bytesPerPacket = 2 * sizeof(uint16_t);
+
+	OSErr soundErr;
+	if ((soundErr = iosInitAudioUnit(&globalSoundOutput)) != noErr) {
+		// TODO(zach): Logging
+	} else if ((soundErr = AudioUnitInitialize(globalSoundOutput.audioUnit)) != noErr) {
+		// TODO(zach): Logging
+	} else if ((soundErr = AudioOutputUnitStart(globalSoundOutput.audioUnit)) != noErr ) {
+		// IDEA(zach): Maybe manually ask AudioUnit to render? That way we can sync with
+		// drawing and provide our own memory
+		//
+		// TODO(zach): Logging
+	}
+
+	iosInitInput(&globalInput, &globalBackBuffers[0]);
+
 	// NOTE(zach): Testing looks like CADisplayLink waits for vsync.
 	// Regardless of frameInterval, if you miss a frame, CADisplayLink will be
 	// called on next possible vsync - even if it is not a multiple of frameInterval.
@@ -421,21 +658,6 @@ NSError *loadWritableBundleData(NSString *sourcePath, NSString *destPath) {
 	globalDisplayLink.frameInterval = 2;
 	[globalDisplayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
 
-	globalSoundOutput.samplesHz = 44100;
-	globalSoundOutput.bytesPerChannelPerPacket = sizeof(uint16_t);
-	globalSoundOutput.bytesPerPacket = 2 * sizeof(uint16_t);
-
-	OSErr soundErr;
-	if ((soundErr = initAudioUnit(&globalSoundOutput)) != noErr) {
-		// TODO(zach): Logging
-	} else if ((soundErr = AudioUnitInitialize(globalSoundOutput.audioUnit)) != noErr) {
-		// TODO(zach): Logging
-	} else if ((soundErr = AudioOutputUnitStart(globalSoundOutput.audioUnit)) != noErr ) {
-		// IDEA(zach): Maybe manually ask AudioUnit to render? That way we can sync with
-		// drawing and provide our own memory
-		//
-		// TODO(zach): Logging
-	}
 	return YES;
 }
 
