@@ -1,17 +1,6 @@
-<<<<<<< HEAD
-
 //:configuration = release
 
 //:configuration = debug
 OTHER_CFLAGS = -DIOS_HANDMADE_DEBUG_INPUT=1 -DHANDMADE_SLOW=1 -DHANDMADE_INTERNAL=1 -Wall -Wno-null-dereference -Wno-tautological-compare -Wno-unused-variable -Wno-c++11-compat-deprecated-writable-strings
 
 //:completeSettings = none
-=======
-//
-//  Config.xcconfig
-//  ios_handmade
-//
-//  Created by Zachary O'Keefe on 2/19/15.
-//  Copyright (c) 2015 Zachary O'Keefe. All rights reserved.
-//
->>>>>>> 0ddcabb97ecf307158ed1f188f863ce0b047d73b

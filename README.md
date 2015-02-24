@@ -14,7 +14,7 @@ Ongoing iOS port of Casey Muratori's awesome [Handmade Hero](https://handmadeher
 - [x] UIKit touch input
 - [ ] OpenGLES graphics
 - [X] Live-loop replays
-- [ ] Live-loop editing. So iOS 8 *does* support dynamic libraries; however, they come packaged with the main bundle - so no way to seperately compile the game code and have the platform load this. Thhat being said, this just might be possible on the Simulator. It requires furthur investigation.
+- [ ] Live-loop editing. So iOS 8 *does* support dynamic libraries; however, for the platform layer to have visability of a newly-compiled game library, we have to be running on Simulator (and even then, not sure if it's possible).
 
 Code is still just debug-quality.
 
