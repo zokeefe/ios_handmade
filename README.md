@@ -7,14 +7,14 @@ Ongoing iOS port of Casey Muratori's awesome [Handmade Hero](https://handmadeher
 
 ### Current status - Day 40 (Working!)
 
-![screenshot](/screenshots/day40_3.png)
+![screenshot](/screenshots/day40_4.png)
 
 - [x] CoreAudio sound
 - [x] Quartz graphics. Currently blitting game buffer directly to screen without scaling.
 - [x] UIKit touch input
 - [ ] OpenGLES graphics
-- [ ] Live-loop replays
-- [ ] Live-loop editing. iOS 8 *does* support dynamic libraries, but don't know how to load the recompiled game library into the device mid-exection
+- [X] Live-loop replays
+- [ ] Live-loop editing. So iOS 8 *does* support dynamic libraries; however, they come packaged with the main bundle - so no way to seperately compile the game code and have the platform load this. Thhat being said, this just might be possible on the Simulator. It requires furthur investigation.
 
 Code is still just debug-quality.
 

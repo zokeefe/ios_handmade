@@ -1,0 +1,7 @@
+
+//:configuration = release
+
+//:configuration = debug
+OTHER_CFLAGS = -DIOS_HANDMADE_DEBUG_INPUT=1 -DHANDMADE_SLOW=1 -DHANDMADE_INTERNAL=1 -Wall -Wno-null-dereference -Wno-tautological-compare -Wno-unused-variable -Wno-c++11-compat-deprecated-writable-strings
+
+//:completeSettings = none

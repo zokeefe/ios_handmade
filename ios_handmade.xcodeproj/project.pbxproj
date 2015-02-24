@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		E04D05871A86C6F200BBE114 /* handmade.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E04D05801A86C6F200BBE114 /* handmade.cpp */; };
 		E0602C881A872F2E00D36E73 /* data in Resources */ = {isa = PBXBuildFile; fileRef = E04D05721A86A84A00BBE114 /* data */; };
+		E0AC989B1A96C6BB009C64F9 /* config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = E0AC989A1A96C6BB009C64F9 /* config.xcconfig */; };
 		E0B1F8331A858DE900BFD1AC /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E0B1F8321A858DE900BFD1AC /* UIKit.framework */; };
 		E0B1F8351A858DF400BFD1AC /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E0B1F8341A858DF400BFD1AC /* CoreGraphics.framework */; };
 		E0B1F8371A858DFE00BFD1AC /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E0B1F8361A858DFE00BFD1AC /* AudioToolbox.framework */; };
@@ -25,6 +26,7 @@
 		E04D057F1A86C6F200BBE114 /* handmade_tile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = handmade_tile.h; path = handmade/handmade_tile.h; sourceTree = SOURCE_ROOT; };
 		E04D05801A86C6F200BBE114 /* handmade.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = handmade.cpp; path = handmade/handmade.cpp; sourceTree = SOURCE_ROOT; };
 		E04D05811A86C6F200BBE114 /* handmade.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = handmade.h; path = handmade/handmade.h; sourceTree = SOURCE_ROOT; };
+		E0AC989A1A96C6BB009C64F9 /* config.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = config.xcconfig; sourceTree = "<group>"; };
 		E0B1F8321A858DE900BFD1AC /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		E0B1F8341A858DF400BFD1AC /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		E0B1F8361A858DFE00BFD1AC /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
@@ -67,6 +69,7 @@
 		E0F3C4391A82E85100A6D5EF = {
 			isa = PBXGroup;
 			children = (
+				E0AC989A1A96C6BB009C64F9 /* config.xcconfig */,
 				E0B1F8361A858DFE00BFD1AC /* AudioToolbox.framework */,
 				E0B1F8341A858DF400BFD1AC /* CoreGraphics.framework */,
 				E0B1F8321A858DE900BFD1AC /* UIKit.framework */,
@@ -165,6 +168,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E0AC989B1A96C6BB009C64F9 /* config.xcconfig in Resources */,
 				E0602C881A872F2E00D36E73 /* data in Resources */,
 				E0F3C4571A82E85200A6D5EF /* Images.xcassets in Resources */,
 			);
@@ -186,7 +190,7 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		E0F3C4671A82E85200A6D5EF /* Debug */ = {
+		E0F3C4671A82E85200A6D5EF /* debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -226,9 +230,9 @@
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
-			name = Debug;
+			name = debug;
 		};
-		E0F3C4681A82E85200A6D5EF /* Release */ = {
+		E0F3C4681A82E85200A6D5EF /* release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -262,9 +266,25 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 			};
-			name = Release;
+			name = release;
 		};
-		E0F3C46A1A82E85200A6D5EF /* Debug */ = {
+		E0F3C46A1A82E85200A6D5EF /* debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E0AC989A1A96C6BB009C64F9 /* config.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CFLAGS = "";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = NO;
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INFOPLIST_FILE = ios_handmade/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = debug;
+		};
+		E0F3C46B1A82E85200A6D5EF /* release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -273,34 +293,10 @@
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				INFOPLIST_FILE = ios_handmade/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				OTHER_CFLAGS = (
-					"-DHANDMADE_INTERNAL=1",
-					"-DHANDMADE_SLOW=1",
-					"-DHANDMADE_OSX=1",
-				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
-			name = Debug;
-		};
-		E0F3C46B1A82E85200A6D5EF /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = NO;
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INFOPLIST_FILE = ios_handmade/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				OTHER_CFLAGS = (
-					"-DHANDMADE_INTERNAL=1",
-					"-DHANDMADE_SLOW=1",
-					"-DHANDMADE_OSX=1",
-				);
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
+			name = release;
 		};
 /* End XCBuildConfiguration section */
 
@@ -308,20 +304,20 @@
 		E0F3C43D1A82E85200A6D5EF /* Build configuration list for PBXProject "ios_handmade" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E0F3C4671A82E85200A6D5EF /* Debug */,
-				E0F3C4681A82E85200A6D5EF /* Release */,
+				E0F3C4671A82E85200A6D5EF /* debug */,
+				E0F3C4681A82E85200A6D5EF /* release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = debug;
 		};
 		E0F3C4691A82E85200A6D5EF /* Build configuration list for PBXNativeTarget "ios_handmade" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E0F3C46A1A82E85200A6D5EF /* Debug */,
-				E0F3C46B1A82E85200A6D5EF /* Release */,
+				E0F3C46A1A82E85200A6D5EF /* debug */,
+				E0F3C46B1A82E85200A6D5EF /* release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = debug;
 		};
 /* End XCConfigurationList section */
 	};

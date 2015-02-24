@@ -5,13 +5,16 @@
 #import <UIKit/UIKit.h>
 #import <AudioUnit/AudioUnit.h>
 #import <limits.h>
-#import "handmade_platform.h"
+#import "../handmade/handmade_platform.h"
 
 // TODO(zach): Make this error proof.
 #define IOS_PATH_MAX PATH_MAX
 
-#define MAX(x, y) (x) > (y) ? (x) : (y)
-#define MIN(x, y) (x) < (y) ? (x) : (y)
+typedef enum {
+	NONE = 0,
+	RECORDING,
+	PLAYBACK
+} replay_state;
 
 typedef struct {
 	int samplesHz;
@@ -29,10 +32,23 @@ typedef struct {
 } ios_offscreen_buffer;
 
 typedef struct {
+    int fd;
+    char fileName[IOS_PATH_MAX];
+    void *memoryBlock;
+} ios_replay_buffer;
+
+typedef struct {
 	size_t totalMemorySize;
+	// NOTE(zach): Storage memory is permanent storage & transient storage
+	size_t storageMemorySize;
 	void *memory;
+	void *storageMemory;
 	char writableDataPath[IOS_PATH_MAX];
-	float pointToPixelScale;
+	Float32 pointToPixelScale;
+	ios_replay_buffer replayBuffer;
+	replay_state replayState;
+	int inputReplayFd;
+	char replayInputPath[IOS_PATH_MAX];
 } ios_state;
 
 typedef struct {
@@ -47,7 +63,7 @@ typedef struct {
 	Float32 centerX;
 	Float32 centerY;
 	Float32 radius;
-	// NOTE(zach): Stick X,Y in range of [-1.0, 1.0]
+	// IMPORTANT(zach): Stick X,Y in range of [-1.0, 1.0]
 	Float32 stickX;
 	Float32 stickY;
 } ios_input_joystick;
@@ -61,6 +77,15 @@ typedef struct {
 
 typedef struct {
 	ios_input_joystick joystick;
+
+#if IOS_HANDMADE_DEBUG_INPUT
+	union {
+		ios_input_round_button debugButtons[1];
+		struct {
+			ios_input_round_button debugLoop;
+		};
+	};
+#endif
 
 	union {
 		ios_input_round_button buttons[8];
@@ -92,3 +117,4 @@ GAME_GET_SOUND_SAMPLES(GameGetSoundSamples);
 @end
 
 #endif
+
