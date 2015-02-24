@@ -3,18 +3,19 @@
 #import <mach/mach_init.h>
 #import <mach/mach_time.h>
 #import <mach/vm_map.h>
-#import <AudioUnit/AudioUnit.h>
+#include <sys/mman.h>
 #import <stdint.h>
 #import <math.h>
 #import <limits.h>
 #import <fcntl.h>
 #import <sys/stat.h>
+#import <AudioUnit/AudioUnit.h>
 #import "ios_app_delegate.h"
-#import "handmade_platform.h"
+#import "../handmade/handmade_platform.h"
 
 // NOTE(zach): I dont know if alternating buffers is of any benifit since I don't know how 
-// Core Animation renders layers. I won't worry about it since I'm switching to OpenGL
-// anyways.
+// Core Animation rendering works underneath. I won't worry about it since I'm switching to 
+// OpenGL anyways.
 //
 // HACK(zach): Fixup these globals later
 global_variable ios_offscreen_buffer globalBackBuffers[2];
@@ -24,6 +25,17 @@ global_variable ios_input globalInput;
 global_variable ios_input_touch globalLastTouch;
 global_variable game_memory globalGameMemory;
 global_variable CADisplayLink *globalDisplayLink;
+
+
+internal void iosBuildFilePathUnchecked(const char *base, const char *append, char *dest) {
+	const char *cptr = base;
+	if (*base != '\0') {
+		while ((*(dest++) = *(cptr++)) != '\0') ;
+		*(dest - 1) = '/';
+	}
+	cptr = append;
+	while ((*(dest++) = *(cptr++)) != '\0') ;
+}
 
 #if HANDMADE_INTERNAL
 // NOTE(zach): Not for shipping.
@@ -41,14 +53,8 @@ internal DEBUG_PLATFORM_FREE_FILE_MEMORY(debugPlatformFreeFileMemory) {
 internal DEBUG_PLATFORM_READ_ENTIRE_FILE(debugPlatformReadEntireFile) {
 	debug_read_file_result result = {0};
 
-	char path[IOS_PATH_MAX] = {0};
-	char *cptr = globalState.writableDataPath;
-	size_t pathInd = 0;
-	while (pathInd < IOS_PATH_MAX && (path[pathInd] = *(cptr++)) != '\0') ++pathInd; 
-	if (pathInd < IOS_PATH_MAX)
-		path[pathInd++] = '/';
-	cptr = Filename;
-	while (pathInd < IOS_PATH_MAX && (path[pathInd] = *(cptr++)) != '\0') ++pathInd;
+	char path[IOS_PATH_MAX];
+	iosBuildFilePathUnchecked(globalState.writableDataPath, Filename, path);
 
 	int fd;
 	if ((fd = open(path, O_RDONLY)) != -1) {
@@ -281,6 +287,22 @@ internal void iosInitInput(ios_input *input, ios_offscreen_buffer *buffer) {
 	input->joystick.centerY = 175.0;
 	input->joystick.radius = 100.0;
 	ASSERT_BOUNDS(input->joystick.centerX, input->joystick.centerY, input->joystick.radius);
+
+#if IOS_HANDMADE_DEBUG_INPUT
+	const Float32 debugButtonRadius = 45.0;
+	const Float32 debugButtonGroupCenterOffsetY = buffer->height - 80.0;
+	const Float32 debugButtonGroupSpreadX = 45.0;
+	for (size_t i = 0; i < ArrayCount(input->debugButtons); ++i) {
+		input->debugButtons[i].radius = debugButtonRadius;
+		input->debugButtons[i].centerY = debugButtonGroupCenterOffsetY;
+		input->debugButtons[i].centerX = buffer->width - debugButtonGroupSpreadX -
+			debugButtonRadius - i * (debugButtonRadius * 2 + debugButtonGroupSpreadX);
+		ASSERT_BOUNDS(
+				input->debugButtons[i].centerX,
+				input->debugButtons[i].centerY,
+				input->debugButtons[i].radius );
+	}
+#endif
 }
 
 internal void iosRenderInputHud(CGContextRef context, ios_offscreen_buffer *buffer, ios_input *input) {
@@ -318,7 +340,23 @@ internal void iosRenderInputHud(CGContextRef context, ios_offscreen_buffer *buff
 				stickRadius * 2 );
 		CGContextFillEllipseInRect(context, rect);
 	}
-
+#if IOS_HANDMADE_DEBUG_INPUT
+	CGContextSetRGBFillColor(context, 1.0, 0.0, 0.0, 0.75);
+	CGContextSetRGBStrokeColor(context, 1.0, 0.0, 0.0, 0.75);
+	CGContextSetLineWidth(context, 3.0);
+	for (size_t i = 0; i < ArrayCount(input->debugButtons); ++i) {
+		ios_input_round_button button = input->debugButtons[i];
+		CGRect rect = CGRectMake(
+				button.centerX - button.radius,
+				button.centerY - button.radius,
+				button.radius * 2,
+				button.radius * 2 );
+		if (button.isDown)
+			CGContextFillEllipseInRect(context, rect);
+		else
+			CGContextStrokeEllipseInRect(context, rect);
+	}
+#endif
 }
 
 internal void iosProccessRoundButtonInput(ios_input_round_button *button, ios_input_touch *touches,
@@ -408,6 +446,95 @@ internal void mapInputToGame(ios_input *iosInput, game_input *gameInput) {
 #endif
 }
 
+internal void iosBeginRecordingInput(ios_state *state) {
+	kern_return_t result = vm_copy(
+			(vm_map_t)mach_task_self(),
+			(vm_address_t)state->storageMemory,
+			(vm_size_t)state->storageMemorySize,
+            (vm_address_t)state->replayBuffer.memoryBlock );
+	if (result == KERN_SUCCESS) {
+		state->inputReplayFd = open(state->replayInputPath, O_WRONLY | O_CREAT, 0644);
+	} else {
+		// TODO(zach) Logging.
+	}
+	state->replayState = RECORDING;
+}
+
+internal void iosEndRecordingInput(ios_state *state) {
+	close(state->inputReplayFd);
+	state->inputReplayFd = 0;
+	state->replayState = NONE;
+}
+
+internal void iosBeginPlaybackInput(ios_state *state) {
+	kern_return_t result = vm_copy(
+			(vm_map_t)mach_task_self(),
+            (vm_address_t)state->replayBuffer.memoryBlock,
+			(vm_size_t)state->storageMemorySize,
+			(vm_address_t)state->storageMemory );
+	if (result == KERN_SUCCESS) {
+		state->inputReplayFd = open(state->replayInputPath, O_RDONLY, 0644);
+	} else {
+		// TODO(zach) Logging.
+	}
+	state->replayState = PLAYBACK;
+}
+
+internal void iosEndPlaybackInput(ios_state *state) {
+	close(state->inputReplayFd);
+	state->inputReplayFd = 0;
+	state->replayState = NONE;
+}
+
+internal void iosRecordInput(ios_state *state, ios_input *input) {
+	if (write(state->inputReplayFd, input, sizeof(ios_input)) != sizeof(ios_input)) {
+		// TODO(zach): Logging.
+	}
+}
+
+internal void iosPlaybackInput(ios_state *state, ios_input *input) {
+	switch (read(state->inputReplayFd, input, sizeof(ios_input))) {
+	case -1:
+		// TODO(zach): Logging.
+		break;
+	case 0:
+		// NOTE(zach): Need to rewind
+		iosEndPlaybackInput(state);
+		iosBeginPlaybackInput(state);
+		iosPlaybackInput(state, input);
+		break;
+	default:
+		break;
+	}
+}
+
+//
+//
+//
+
+@interface Handmade_viewcontroller : UIViewController
+@end
+
+@implementation Handmade_viewcontroller
+
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
+	return UIInterfaceOrientationLandscapeRight;
+}
+
+- (NSUInteger)supportedInterfaceOrientations {
+	return UIInterfaceOrientationMaskLandscapeRight;
+}
+
+- (BOOL)shouldAutorotate {
+	return YES;
+}
+
+@end
+
+//
+//
+//
+
 @implementation App_delegate
 
 - (void)touchEvent:(UIEvent *)event {
@@ -428,12 +555,17 @@ internal void mapInputToGame(ios_input *iosInput, game_input *gameInput) {
 				globalState.pointToPixelScale;
 			touchInputs[touchNum].phase = touch.phase;
 			globalLastTouch = touchInputs[touchNum];
-			NSLog(@"(%f, %f)\n", touchInputs[touchNum].x, touchInputs[touchNum].y);
+			//NSLog(@"(%f, %f)\n", touchInputs[touchNum].x, touchInputs[touchNum].y);
 			++touchNum;
 	}
 
 	for (size_t i = 0; i < ArrayCount(globalInput.buttons); ++i)
 		iosProccessRoundButtonInput(&globalInput.buttons[i], touchInputs, touchNum);
+
+#if IOS_HANDMADE_DEBUG_INPUT
+	for (size_t i = 0; i < ArrayCount(globalInput.debugButtons); ++i)
+		iosProccessRoundButtonInput(&globalInput.debugButtons[i], touchInputs, touchNum);
+#endif
 
 	Float32 extraStickToleranceRadius = 200.0;
 	ios_input_joystick *joystick = &globalInput.joystick;
@@ -468,6 +600,8 @@ internal void mapInputToGame(ios_input *iosInput, game_input *gameInput) {
 
 - (void)doFrame:(CADisplayLink *)sender {
 	local_persist size_t bufferNo = 0;
+	local_persist uint64_t tastTime = 0;
+	local_persist real32 machToNano = 0.0;
 
 	ios_offscreen_buffer activeBuffer = globalBackBuffers[bufferNo ^= 1];
 
@@ -504,11 +638,41 @@ internal void mapInputToGame(ios_input *iosInput, game_input *gameInput) {
 		gameBuffer.Pitch = activeBuffer.pitch;
 		gameBuffer.BytesPerPixel = activeBuffer.bytesPerPixel;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-braces"
 		game_input gameInput = {0};
+#pragma clang diagnostic pop
+		if (globalInput.debugLoop.halfTransitionCount > 0 && globalInput.debugLoop.isDown) {
+			switch (globalState.replayState) {
+			case NONE:
+				iosBeginRecordingInput(&globalState);
+				globalState.replayState = RECORDING;
+				break;
+			case RECORDING:
+				iosEndRecordingInput(&globalState);
+				iosBeginPlaybackInput(&globalState);
+				globalState.replayState = PLAYBACK;
+				break;
+			case PLAYBACK:
+				iosEndPlaybackInput(&globalState);
+				globalState.replayState = NONE;
+				break;
+			}
+		}
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wswitch"
+		switch (globalState.replayState) {
+		case RECORDING:
+			iosRecordInput(&globalState, &globalInput);
+			break;
+		case PLAYBACK:
+			iosPlaybackInput(&globalState, &globalInput);
+			break;
+		}
+#pragma clang diagnostic pop
+
 		mapInputToGame(&globalInput, &gameInput);
 
-		local_persist uint64_t last = 0;
-		local_persist real32 machToNano = 0.0;
 		uint64_t now = mach_absolute_time();
 		if (machToNano == 0.0 ) {
 			mach_timebase_info_data_t sTimebaseInfo;
@@ -516,11 +680,14 @@ internal void mapInputToGame(ios_input *iosInput, game_input *gameInput) {
 			machToNano = (real32)sTimebaseInfo.numer / (real32)sTimebaseInfo.denom;
 		}
 #define NANOSECONDS_PER_S 1000000000 
-		gameInput.dtForFrame = (real32)(now - last) * machToNano / (real32)NANOSECONDS_PER_S;
-		last = now;
+		gameInput.dtForFrame = (real32)(now - tastTime) * machToNano / (real32)NANOSECONDS_PER_S;
+		tastTime = now;
 
 		GameUpdateAndRender(&thread, &globalGameMemory, &gameInput, &gameBuffer);
 		iosRenderInputHud(context, &activeBuffer, &globalInput);
+#if IOS_HANDMADE_DEBUG
+		iosRenderDebugInputHud(context, &activeBuffer, &globalInput);
+#endif
 		renderTouch(context, globalLastTouch);
 
 		// NOTE(zach): For now, blit the bitmap returned by game code directly to screen.
@@ -539,6 +706,13 @@ internal void mapInputToGame(ios_input *iosInput, game_input *gameInput) {
 		NSLog(@"Couldn't create graphics context\n");
 		// TODO(zach): logging
 	}
+
+	for (size_t i = 0; i < ArrayCount(globalInput.buttons); ++i)
+		globalInput.buttons[i].halfTransitionCount = 0;
+#if IOS_HANDMADE_DEBUG_INPUT
+	for (size_t i = 0; i < ArrayCount(globalInput.debugButtons); ++i)
+		globalInput.debugButtons[i].halfTransitionCount = 0;
+#endif
 }
 
 - (BOOL)application:(UIApplication *)application willFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
@@ -561,11 +735,10 @@ internal void mapInputToGame(ios_input *iosInput, game_input *gameInput) {
 	//
 	// http://stackoverflow.com/questions/25963101/unexpected-nil-window-in-uiapplicationhandleeventfromqueueevent
 	self.window = [[UIWindow alloc] init];
+    self.window.rootViewController = [[Handmade_viewcontroller alloc] init];
 	[self.window makeKeyAndVisible];
 	self.window.frame = [[UIScreen mainScreen] bounds];
 
-    self.window.rootViewController = [[UIViewController alloc] init];
-    
 	// IMPORTANT(zach): Make sure there exists a launch screen for the suitable device. If you don't
 	// have a launch screen for a particular screen size, Apple interprets this as your app not
 	// supporting that screen size, and will launch in letterbox mode.
@@ -597,12 +770,60 @@ internal void mapInputToGame(ios_input *iosInput, game_input *gameInput) {
 	globalGameMemory.DEBUGPlatformWriteEntireFile = debugPlatformWriteEntireFile;
 #endif
 
-	int bitmapSize = pixelWidth * pixelHeight * bytesPerPixel;
+	size_t bitmapSize = pixelWidth * pixelHeight * bytesPerPixel;
+	size_t gameStorageSize = (size_t)globalGameMemory.PermanentStorageSize +
+		(size_t)globalGameMemory.TransientStorageSize;
 
-	globalState.totalMemorySize = 
-		globalGameMemory.PermanentStorageSize +
-		globalGameMemory.TransientStorageSize +
-		bitmapSize * 2;
+	globalState.totalMemorySize = gameStorageSize + bitmapSize * 2;
+	globalState.storageMemorySize = gameStorageSize;
+
+	iosBuildFilePathUnchecked(globalState.writableDataPath, "replay_loop_state.hmi",
+			globalState.replayBuffer.fileName);
+
+	iosBuildFilePathUnchecked(globalState.writableDataPath, "replay_loop_input.hmi",
+			globalState.replayInputPath);
+
+	if ((globalState.replayBuffer.fd = open(globalState.replayBuffer.fileName, O_RDWR | O_CREAT, 0644)) != 1) {
+		struct stat sbuff;
+		if (stat(globalState.replayBuffer.fileName, &sbuff) != -1) {
+			if (sbuff.st_size != gameStorageSize) {
+				fstore_t fstore = {0};
+				fstore.fst_flags = F_ALLOCATECONTIG | F_ALLOCATEALL,
+				fstore.fst_posmode = F_PEOFPOSMODE;
+				fstore.fst_offset = 0;
+				fstore.fst_length = gameStorageSize;
+				fstore.fst_bytesalloc = 0;
+				
+				int result = fcntl(globalState.replayBuffer.fd, F_PREALLOCATE, &fstore);
+				if (result != -1) {
+					if ((result = ftruncate(globalState.replayBuffer.fd, gameStorageSize)) !=  -1) {
+						if (stat(globalState.replayBuffer.fileName, &sbuff) != -1) {
+							Assert(sbuff.st_size == gameStorageSize);
+						}
+					} else {
+						// TODO(zach): Logging.
+					}
+				} else {
+					// TODO(zach): Logging.
+				}
+			}
+		} else {
+			// TODO(zach): Logging.
+		}
+	} else {
+		// TODO(zach): Logging.
+	}
+
+	// TODO(zach): How to do this at mach level with vm_map()?
+	if ((globalState.replayBuffer.memoryBlock = mmap(
+			NULL,
+			gameStorageSize,
+			PROT_READ | PROT_WRITE,
+			MAP_FILE | MAP_SHARED,
+			globalState.replayBuffer.fd,
+			0 )) == MAP_FAILED) {
+		// TODO(zach): Logging.
+	}
 
 	// TODO(zach): Prefer this over mmap() ?
 	vm_address_t baseAddress;
@@ -614,6 +835,8 @@ internal void mapInputToGame(ios_input *iosInput, game_input *gameInput) {
 	if (result != KERN_SUCCESS) {
 		// TODO(zach): logging
 	}
+
+	globalState.memory = globalState.storageMemory = (void *)baseAddress;
 
 	// NOTE(zach): vm_allocate() initializes pages to 0 as required by game code
 	globalGameMemory.PermanentStorage = (void *)baseAddress;
@@ -662,27 +885,31 @@ internal void mapInputToGame(ios_input *iosInput, game_input *gameInput) {
 }
 
 - (void)applicationWillResignActive:(UIApplication *)application {
+	// TODO(zach): Implement later
 	// Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
 	// Use this method to pause ongoing tasks, disable timers, and throttle down OpenGL ES frame rates. Games should use this method to pause the game.
 }
 
 - (void)applicationDidEnterBackground:(UIApplication *)application {
+	// TODO(zach): Implement later
 	// Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
 	// If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
 }
 
 - (void)applicationWillEnterForeground:(UIApplication *)application {
+	// TODO(zach): Implement later
 	// Called as part of the transition from the background to the inactive state; here you can undo many of the changes made on entering the background.
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application {
+	// TODO(zach): Implement later
 	// Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
 }
 
 - (void)applicationWillTerminate:(UIApplication *)application {
+	// TODO(zach): Implement later
 	// Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
 }
 
 @end
-
 
