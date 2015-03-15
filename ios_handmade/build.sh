@@ -18,7 +18,7 @@ DEVICE_ID=0
 if [ "$IS_SIMULATOR" -ne 0 ]; then
 	#DEST="'platform=iOS Simulator,name=$NAME,OS=latest'"
 	DEST="platform=iOS Simulator,name=$NAME,OS=latest"
-	SDK='iphonesimulator8.1'
+	SDK='iphonesimulator8.2'
 else
 	DEST='platform=iOS,name='$NAME',id='$DEVICE_ID
 	SDK='iphoneos8.1'
@@ -32,7 +32,7 @@ fi
 xcodebuild \
 	-destination "$DEST" \
 	-configuration debug \
-	-sdk "$SDK" \
+	-sdk $SDK \
 	build
 
 popd

@@ -5,9 +5,9 @@ Ongoing iOS port of Casey Muratori's awesome [Handmade Hero](https://handmadeher
 1. To learn about the iOS platform
 2. To be able to drop-in Casey's platform-independent game source code and have it run unchanged
 
-### Current status - Day 40 (Working!)
+### Current status - Day 52
 
-![screenshot](/screenshots/day40_4.png)
+![screenshot](/screenshots/day52.png)
 
 - [x] CoreAudio sound
 - [x] Quartz graphics. Currently blitting game buffer directly to screen without scaling.

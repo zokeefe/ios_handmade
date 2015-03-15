@@ -183,7 +183,6 @@ internal OSStatus iosInitAudioUnit(ios_sound_output* soundOutput) {
 		return err;
 	 
 	AURenderCallbackStruct inputCb;
-	// TODO(zach): Get samples from game. For now, render a sine wave
 	//inputCb.inputProc = renderSineWave; //getInputSoundSamples;
 	inputCb.inputProc = getInputSoundSamples;
 	inputCb.inputProcRefCon = soundOutput;
@@ -257,7 +256,11 @@ internal void iosInitInput(ios_input *input, ios_offscreen_buffer *buffer) {
 	Assert((x) + (r) < buffer->width) \
 	Assert((y) - (r) >= 0) \
 	Assert((y) + (r) < buffer->height)
-	
+
+
+	//
+	// Action buttons
+	//
 	const Float32 actionButtonRadius = 45.0;
 	const Float32 actionButtonGroupCenterOffsetX = (Float32)buffer->width - 175.0;
 	const Float32 actionButtonGroupCenterOffsetY = 175.0;
@@ -283,10 +286,29 @@ internal void iosInitInput(ios_input *input, ios_offscreen_buffer *buffer) {
 	input->actionRight.centerY = actionButtonGroupCenterOffsetY;
 	ASSERT_BOUNDS(input->actionRight.centerX, input->actionRight.centerY, input->actionRight.radius)
 
+	//
+	// Joystick
+	//
 	input->joystick.centerX = 175.0;
 	input->joystick.centerY = 175.0;
 	input->joystick.radius = 100.0;
 	ASSERT_BOUNDS(input->joystick.centerX, input->joystick.centerY, input->joystick.radius);
+
+	//
+	// Start/back
+	//
+	const Float32 ctrlButtonRadius = 30.0;
+	const Float32 ctrlButtonGroupCenterOffsetY = buffer->height - 80.0;
+	const Float32 ctrlButtonGroupSpreadX = 30.0;
+	
+	input->back.radius = input->start.radius = ctrlButtonRadius;
+	input->back.centerY = input->start.centerY = ctrlButtonGroupCenterOffsetY;
+	
+	input->back.centerX = ctrlButtonGroupSpreadX + ctrlButtonRadius;
+	ASSERT_BOUNDS(input->back.centerX, input->back.centerY, input->back.radius);
+
+	input->start.centerX = (ctrlButtonGroupSpreadX * 2) + (ctrlButtonRadius * 3);
+	ASSERT_BOUNDS(input->start.centerX, input->start.centerY, input->start.radius);
 
 #if IOS_HANDMADE_DEBUG_INPUT
 	const Float32 debugButtonRadius = 45.0;
@@ -404,46 +426,9 @@ internal void mapInputToGame(ios_input *iosInput, game_input *gameInput) {
 	mapButtonInputToGameInput(&iosInput->rightShoulder, &controller->RightShoulder);
 	mapButtonInputToGameInput(&iosInput->back, &controller->Back);
 	mapButtonInputToGameInput(&iosInput->start, &controller->Start);
-#if 0
-	// TODO(zach): Switch this to analog when the game supports it
 	controller->IsAnalog = true;
 	controller->StickAverageX = iosInput->joystick.stickX;
 	controller->StickAverageY = iosInput->joystick.stickY;
-#else
-	Float32 threshhold = 0.2;
-	controller->IsAnalog = (bool32)false;
-	if (iosInput->joystick.stickX >= threshhold) {
-		controller->MoveRight.EndedDown = (bool32)true;
-		controller->MoveRight.HalfTransitionCount = 1;
-	} else {
-		controller->MoveRight.EndedDown = (bool32)false;
-		controller->MoveRight.HalfTransitionCount = 0;
-	}
-
-	if (iosInput->joystick.stickX <= -threshhold) {
-		controller->MoveLeft.EndedDown = (bool32)true;
-		controller->MoveLeft.HalfTransitionCount = 1;
-	} else {
-		controller->MoveLeft.EndedDown = (bool32)false;
-		controller->MoveLeft.HalfTransitionCount = 0;
-	}
-
-	if (iosInput->joystick.stickY >= threshhold) {
-		controller->MoveUp.EndedDown = (bool32)true;
-		controller->MoveUp.HalfTransitionCount = 1;
-	} else {
-		controller->MoveUp.EndedDown = (bool32)false;
-		controller->MoveUp.HalfTransitionCount = 0;
-	}
-
-	if (iosInput->joystick.stickY <= -threshhold) {
-		controller->MoveDown.EndedDown = (bool32)true;
-		controller->MoveDown.HalfTransitionCount = 1;
-	} else {
-		controller->MoveDown.EndedDown = (bool32)false;
-		controller->MoveDown.HalfTransitionCount = 0;	
-	}
-#endif
 }
 
 internal void iosBeginRecordingInput(ios_state *state) {
