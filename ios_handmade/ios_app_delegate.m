@@ -195,6 +195,7 @@ internal OSStatus iosInitAudioUnit(ios_sound_output* soundOutput) {
 			sizeof(inputCb) )) != noErr) return err;
 	
 	// IMPORTANT(zach): PCM, stereo, 16bpc, integer samples, interleaved
+	// Left channel is the lower 16 bits, right is the higher 16 bits.
 	AudioStreamBasicDescription streamFormat = {0};
 	streamFormat.mSampleRate = soundOutput->samplesHz;
 	streamFormat.mFormatID = kAudioFormatLinearPCM;
@@ -594,7 +595,6 @@ internal void iosPlaybackInput(ios_state *state, ios_input *input) {
 	CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
 
 	// IMPORTANT(zach): 32bpp, 8bpc, ARGB, premultiplied alpha, little endian.
-	// Left channel is the lower 16 bits, right is the higher 16 bits.
 	CGContextRef context = CGBitmapContextCreate(
 			activeBuffer.memory,
 			activeBuffer.width,
