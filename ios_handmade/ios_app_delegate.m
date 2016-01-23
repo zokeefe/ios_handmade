@@ -11,7 +11,7 @@
 #import <sys/stat.h>
 #import <AudioUnit/AudioUnit.h>
 #import "ios_app_delegate.h"
-#import "../handmade/handmade_platform.h"
+#import "../handmade/code/handmade_platform.h"
 
 // NOTE(zach): I dont know if alternating buffers is of any benifit since I don't know how 
 // Core Animation rendering works underneath. I won't worry about it since I'm switching to 
@@ -702,7 +702,7 @@ internal void iosPlaybackInput(ios_state *state, ios_input *input) {
 
 - (BOOL)application:(UIApplication *)application willFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
 
-	NSString *sourcePath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"data"];
+	NSString *sourcePath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"code/data"];
 	NSString *destPath = [NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES) firstObject];
 	// TODO(zach): Probably don't need to do this everytime.
 	NSError *loadErr = iosLoadWritableBundleData(sourcePath, destPath);
@@ -745,7 +745,7 @@ internal void iosPlaybackInput(ios_state *state, ios_input *input) {
 	globalBackBuffers[0].pitch = pixelWidth * bytesPerPixel;
 	globalBackBuffers[1] = globalBackBuffers[0];
 
-	globalGameMemory.PermanentStorageSize = Megabytes(64);
+	globalGameMemory.PermanentStorageSize = Megabytes(256);
 	globalGameMemory.TransientStorageSize = Megabytes(64);
 	globalGameMemory.IsInitialized = (bool32)false;
 
@@ -825,12 +825,12 @@ internal void iosPlaybackInput(ios_state *state, ios_input *input) {
 
 	// NOTE(zach): vm_allocate() initializes pages to 0 as required by game code
 	globalGameMemory.PermanentStorage = (void *)baseAddress;
-	globalGameMemory.TransientStorage = (void *)(baseAddress +
-			globalGameMemory.PermanentStorage);
-	globalBackBuffers[0].memory = (void *)(baseAddress +
+	globalGameMemory.TransientStorage = (void *)((uint8_t *)baseAddress +
+			globalGameMemory.PermanentStorageSize);
+	globalBackBuffers[0].memory = (void *)((uint8_t *)baseAddress +
 			globalGameMemory.PermanentStorageSize +
 			globalGameMemory.TransientStorageSize);
-	globalBackBuffers[1].memory = (void *)(baseAddress +
+	globalBackBuffers[1].memory = (void *)((uint8_t *)baseAddress +
 			globalGameMemory.PermanentStorageSize +
 			globalGameMemory.TransientStorageSize +
 			bitmapSize);

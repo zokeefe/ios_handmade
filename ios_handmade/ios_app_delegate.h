@@ -5,7 +5,7 @@
 #import <UIKit/UIKit.h>
 #import <AudioUnit/AudioUnit.h>
 #import <limits.h>
-#import "../handmade/handmade_platform.h"
+#import "../handmade/code/handmade_platform.h"
 
 // TODO(zach): Make this error proof.
 #define IOS_PATH_MAX PATH_MAX

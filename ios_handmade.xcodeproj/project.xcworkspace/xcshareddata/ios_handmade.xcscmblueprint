@@ -1,0 +1,30 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "FAD3A05B57EE9CC41D8ED9626A777327D296939F",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "FAD3A05B57EE9CC41D8ED9626A777327D296939F" : 0,
+    "0EE183645467C08F1B1C4F9125008A359A660222" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "225434E3-94A4-4411-B28F-E96D0D17D896",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "FAD3A05B57EE9CC41D8ED9626A777327D296939F" : "ios_handmade",
+    "0EE183645467C08F1B1C4F9125008A359A660222" : "ios_handmade\/handmade\/"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "ios_handmade",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "ios_handmade.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/HandmadeHero\/cpp.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "0EE183645467C08F1B1C4F9125008A359A660222"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/zokeefe\/ios_handmade.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "FAD3A05B57EE9CC41D8ED9626A777327D296939F"
+    }
+  ]
+}
