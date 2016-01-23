@@ -1,10 +1,6 @@
 # ios_handmade
 Ongoing iOS port of Casey Muratori's awesome [Handmade Hero](https://handmadehero.org/) project.
 
-### Goals
-1. To learn about the iOS platform
-2. To be able to drop-in Casey's platform-independent game source code and have it run unchanged
-
 ### Current status - Day 69
 
 ![screenshot](/screenshots/day69.png)
