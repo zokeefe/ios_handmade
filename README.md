@@ -23,10 +23,9 @@ Code is still just debug-quality.
 * A Mac with Xcode and the latest SDK (current 9.2)
 
 ### How-to (Changes from last update)
-1. Clone or update this repository.
-2. Clone Casey's GitHub repo into the **handmade/** directory (this should be pulled-in automatically as a submodule, if you have access).
-3. Unzip the game's assets into **handmade/data/** as-is.
-4. Build using Xcode and run on the Simulator (or on a device if you have an iOS Developers Membership). I don't know how to run iOS app any other way other than through Xcode. Depending on the day you're building, you may have to manually add/remove compile targets and files from the project. Currently, the project is setup for day 69.
+1. Clone this repository with `clone --recursive`. This will also clone Casey's GitHub repo into the **handmade/** directory (*if you have access!*)
+2. Unzip the game's assets into **handmade/data/**.
+3. Build using Xcode and run on the Simulator (or on a device if you have an iOS Developers Membership). I don't know how to run iOS app any other way other than through Xcode. Depending on the day you're building, you may have to manually add/remove compile targets and files from the project. Currently, the project is setup for day 69.
 
 ### Directory structure ###
 
