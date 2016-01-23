@@ -39,7 +39,7 @@ ios_handmade/handmade/data - Casey's unzipped data
 * Analog left-thumbstick maps to movement
 * 4 blue buttons on lower-right map to Action[Up/Down/Left/Right]
 * 2 blue buttons on top-left map to Back/Start
-* red button in top-left is for live-loop replay recording and playback
+* Red button in top-right is for live-loop replay recording and playback
 
 ### Licensing
 Casey Muratori is the author of Handmade Hero. I am writing this port with his permission. Please checkout the project here ([https://handmadehero.org/](https://handmadehero.org/)).
