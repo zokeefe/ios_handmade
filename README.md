@@ -1,5 +1,7 @@
 # ios_handmade
-Ongoing iOS port of Casey Muratori's awesome [Handmade Hero](https://handmadehero.org/) project.
+[Paused] iOS port of Casey Muratori's awesome [Handmade Hero](https://handmadehero.org/) project.
+
+For those coming here to find a "proper" way to setup an iOS platform layer, this sadly won't suffice. Most major areas (rendering, audio, touch input) have issues in this codebase. For a (more) updated account of those systems, refer to my repo "ios_test" which attempts to nail-down some of the oddities of iOS.
 
 ### Current status - Day 69
 
